@@ -1,17 +1,21 @@
 {
-    "name": "employee-tracker",
+    "name": "employee_tracker",
     "version": "1.0.0",
     "description": "",
     "main": "index.js",
     "scripts": {
-        "start": "node index"
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "start": "node index.js"
     },
     "author": "",
     "license": "ISC",
     "dependencies": {
-        "asciiart-logo": "^0.2.6",
+        "asciiart-logo": "^0.2.7",
         "console.table": "^0.10.0",
-        "inquirer": "8.2.4",
-        "mysql2": "^2.1.0"
+        "dotenv": "^16.0.3",
+        "env": "^0.0.2",
+        "inquirer": "^8.2.4",
+        "mysql2": "^2.3.3",
+        "sequelize": "^6.3.5"
     }
 }

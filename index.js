@@ -1,126 +1,327 @@
-const inquirer = require("inquirer");
-const db = require("./Develop/db/index");
-//const cTable = require("console.table");
+const cTable = require('console.table');
+const inquirer = require('inquirer');
+const mysql = require('mysql2')
+require('dotenv').config()
+const connection = mysql.createConnection(
+  {
+    host: 'localhost',
+    user: 'root',
+    password: process.env.PASSWORD,
+    database: 'employee_db'
+  },
+  console.log(`Connected to the employee_db database.`)
+);
 
-function viewAllDepartments() {
-  console.log("Viewing all departments..");
-  db.viewAllDepartments()
-    .then(([rows]) => {
-      let departments = rows;
-      console.table(departments);
-    })
-    .then(() => mainMenu());
-}
-
-function viewAllRoles() {
-  console.log("Viewing all roles..");
-  db.viewAllRoles()
-    .then(([rows]) => {
-      let roles = rows;
-      console.table(roles);
-    })
-    .then(() => mainMenu());
-}
-
-function viewAllEmployees() {
-  console.log("Viewing all employees..");
-  db.viewAllEmployees()
-    .then(([rows]) => {
-      let employees = rows;
-      console.table(employees);
-    })
-    .then(() => mainMenu());
-}
-
-async function addDepartment() {
-  console.log("Adding a department..");
-  db.addDepartment()
-    .then(([rows]) => {
-      let departments = rows;
-      console.table(departments);
-    })
-    .then(() => mainMenu());
-}
-
-async function addRole() {
-  console.log("Adding a role..");
-  db.addRole()
-    .then(([rows]) => {
-      let roles = rows;
-      console.table(roles);
-    })
-    .then(() => mainMenu());
-}
-
-async function addEmployee() {
-  console.log("Adding an employee..");
-  db.addEmployee()
-  .then(([rows]) => {
-      let employees = rows;
-      console.table(employees);
-    })
-    .then(() => mainMenu());
-}
-
-async function updateEmployeeRole() {
-  console.log("Updating an employee role..");
-  db.updateEmployeeRole()
-    .then(([rows]) => {
-      let employees = rows;
-      console.table(employees);
-    })
-    .then(() => mainMenu());
-}
-
-function exitApp() {
-  console.log("Thanks for using SQL CMS! Press CTRL+C to exit the terminal.");
-}
-
-async function mainMenu() {
-  await inquirer.prompt([
-    {
-      type: "list",
-      message: "Main Menu",
-      name: "choices",
-      choices: [
-        "View all departments",
-        "View all roles",
-        "View all employees",
-        "Add a department",
-        "Add a role",
-        "Add an employee",
-        "Update an employee role",
-        "Exit"
-      ],
-    },
-  ]) .then((answer) => {
-  switch (answer.choices) {
-    case "View all departments":
-      viewAllDepartments();
-      break;
-    case "View all roles":
-      viewAllRoles();
-      break;
-    case "View all employees":
-      viewAllEmployees();
-      break;
-    case "Add a department":
-      addDepartment();
-      break;
-    case "Add a role":
-      addRole();
-      break;
-    case "Add an employee":
-      addEmployee();
-      break;
-    case "Update an employee role":
-      updateEmployeeRole();
-      break;
-    case "Exit":
-      exitApp();
-      break;
-  }
+connection.connect(function (err) {
+    if (err) {
+        console.error("error connecting: " + err.stack);
+        return;
+    }
 });
+
+
+getJob();
+
+
+function getJob() {
+    inquirer
+        .prompt(
+            {
+                name: 'job',
+                type: 'list',
+                message: 'Which would you like to do?',
+                choices: ['add', 'view', 'update', 'exit'],
+            }
+        ).then(function ({ job }) {
+            switch (job) {
+                case 'add':
+                    add();
+                    break;
+                case 'view':
+                    view();
+                    break;
+                case 'update':
+                    update();
+                    break;
+                case 'exit':
+                    connection.end()
+                    return;
+            }
+
+        })
 }
 
-mainMenu();
+function add() {
+    inquirer
+        .prompt(
+            {
+                name: "db",
+                message: 'Which would you like to add?',
+                type: 'list',
+                choices: ['department', 'role', 'employee'],
+            }
+        ).then(function ({ db }) {
+            switch (db) {
+                case "department":
+                    add_department()
+                    break;
+                case "role":
+                    add_role()
+                    break;
+                case 'employee':
+                    add_employee();
+                    break;
+            }
+        })
+
+}
+
+function add_department() {
+    inquirer
+        .prompt(
+            {
+                name: 'name',
+                message: "What is the department's name?",
+                type: 'input'
+            }
+        ).then(function ({ name }) {
+            connection.query(`INSERT INTO department (name) VALUES ('${name}')`, function (err, data) {
+                if (err) throw err;
+                console.log(`Added`)
+                getJob();
+            })
+        })
+}
+
+function add_role() {
+    let departments = []
+
+    connection.query(`SELECT * FROM department`, function (err, data) {
+        if (err) throw err;
+
+        for (let i = 0; i < data.length; i++) { // Loops through and finds the name of all the departments
+            departments.push(data[i].name)
+
+        }
+
+
+        inquirer
+            .prompt([
+                {
+                    name: 'title',
+                    message: "What is the role?",
+                    type: 'input'
+                },
+                {
+                    name: 'salary',
+                    message: 'How much do they make?',
+                    type: 'input'
+                },
+                {
+                    name: 'department_id',
+                    message: 'What department does it belong to?',
+                    type: 'list',
+                    choices: departments
+                }
+            ]).then(function ({ title, salary, department_id }) {
+                let index = departments.indexOf(department_id)
+
+                connection.query(`INSERT INTO role (title, salary, department_id) VALUES ('${title}', '${salary}', ${index})`, function (err, data) {
+                    if (err) throw err;
+                    console.log(`Added`)
+                    getJob();
+                })
+            })
+    })
+}
+
+function add_employee() {
+    let employees = [];
+    let roles = [];
+
+    connection.query(`SELECT * FROM role`, function (err, data) {
+        if (err) throw err;
+
+
+        for (let i = 0; i < data.length; i++) {
+            roles.push(data[i].title);
+        }
+
+        connection.query(`SELECT * FROM employee`, function (err, data) {
+            if (err) throw err;
+
+            for (let i = 0; i < data.length; i++) {
+                employees.push(data[i].first_name);
+            }
+
+            inquirer
+                .prompt([
+                    {
+                        name: 'first_name',
+                        message: "what's the employees First Name",
+                        type: 'input'
+                    },
+                    {
+                        name: 'last_name',
+                        message: 'What is their last name?',
+                        type: 'input',
+                    },
+                    {
+                        name: 'role_id',
+                        message: 'What is their role?',
+                        type: 'list',
+                        choices: roles,
+                    },
+                    {
+                        name: 'manager_id',
+                        message: "Who is their manager?",
+                        type: 'list',
+                        choices: ['none'].concat(employees)
+                    }
+                ]).then(function ({ first_name, last_name, role_id, manager_id }) {
+                    let queryText = `INSERT INTO employee (first_name, last_name, role_id`;
+                    if (manager_id != 'none') {
+                        queryText += `, manager_id) VALUES ('${first_name}', '${last_name}', ${roles.indexOf(role_id)}, ${employees.indexOf(manager_id) + 1})`
+                    } else {
+                        queryText += `) VALUES ('${first_name}', '${last_name}', ${roles.indexOf(role_id) + 1})`
+                    }
+                    console.log(queryText)
+
+                    connection.query(queryText, function (err, data) {
+                        if (err) throw err;
+
+                        getJob();
+                    })
+                })
+
+        })
+    })
+}
+
+function view() {
+    inquirer
+        .prompt(
+            {
+                name: "db",
+                message: 'Which would you like to view?',
+                type: 'list',
+                choices: ['department', 'role', 'employee'],
+            }
+        ).then(function ({ db }) {
+            connection.query(`SELECT * FROM ${db}`, function (err, data) {
+                if (err) throw err;
+
+                console.table(data)
+                getJob();
+            })
+        })
+}
+
+function update() {
+    inquirer
+        .prompt(
+            {
+                name: 'update',
+                message: 'What would you like to update?',
+                type: 'list',
+                choices: ['role', 'manager']
+            }
+        ).then(function ({ update }) {
+            switch (update) {
+                case 'role':
+                    update_role();
+                    break;
+                case 'manager':
+                    update_manager();
+                    break;
+            }
+        })
+}
+
+function update_role() {
+    connection.query(`SELECT * FROM employee`, function (err, data) {
+        if (err) throw err;
+
+        let employees = [];
+        let roles = [];
+
+        for (let i = 0; i < data.length; i++) {
+            employees.push(data[i].first_name)
+        }
+
+        connection.query(`SELECT * FROM role`, function (err, data) {
+            if (err) throw err;
+
+            for (let i = 0; i < data.length; i++) {
+                roles.push(data[i].title)
+            }
+
+            inquirer
+                .prompt([
+                    {
+                        name: 'employee_id',
+                        message: "Who's role needs to be updated",
+                        type: 'list',
+                        choices: employees
+                    },
+                    {
+                        name: 'role_id',
+                        message: "What is the new role?",
+                        type: 'list',
+                        choices: roles
+                    }
+                ]).then(function ({ employee_id, role_id }) {
+                    connection.query(`UPDATE employee SET role_id = ${roles.indexOf(role_id) + 1} WHERE id = ${employees.indexOf(employee_id) + 1}`, function (err, data) {
+                        if (err) throw err;
+
+                        getJob();
+                    })
+                })
+        })
+
+    })
+}
+
+function update_manager() {
+    connection.query(`SELECT * FROM employee`, function (err, data) {
+        if (err) throw err;
+
+        let employees = [];
+
+        for (let i = 0; i < data.length; i++) {
+            employees.push(data[i].first_name)
+        }
+
+        inquirer
+            .prompt([
+                {
+                    name: 'employee_id',
+                    message: 'Who would you like to update?',
+                    type: 'list',
+                    choices: employees
+                },
+                {
+                    name: "manager_id",
+                    message: "Who's their new manager?",
+                    type: 'list',
+                    choices: ['none'].concat(employees)
+                }
+            ]).then(({ employee_id, manager_id }) => {
+                let queryText = ""
+                if (manager_id !== "none") {
+                    queryText = `UPDATE employee SET manager_id = ${employees.indexOf(manager_id) + 1} WHERE id = ${employees.indexOf(employee_id) + 1}`
+                } else {
+                    queryText = `UPDATE employee SET manager_id = ${null} WHERE id = ${employees.indexOf(employee_id) + 1}`
+                }
+
+                connection.query(queryText, function (err, data) {
+                    if (err) throw err;
+
+                    getJob();
+                })
+
+            })
+
+    });
+
+}

@@ -33,10 +33,7 @@ THEN I am prompted to select an employee to update and their new role and this i
 ```
 
 ## Installation
-This project does require the following NPM Packages:
-*MySQL
-*Inquirer
-*console.table
+This app requires the following npm packages: console.table, inquirer, mysql2, and dotenv.
 
 ## Demonstration
 To view a video demonstration, [click here](https://github.com/cmizelle10/Employee-Tracker/blob/main/employee_tracker_demo.webm)
